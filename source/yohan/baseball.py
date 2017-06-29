@@ -201,6 +201,5 @@ print(DB_TYPE + DB_USER + ":" + DB_PASSWORD + "@" + DB_URL + ":" + DB_PORT + "/"
 print(MATCH_URL)
 
 
-
-
 #highlist_json = json.load(urllib.urlopen(MATCH_URL))
+
