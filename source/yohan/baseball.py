@@ -3,6 +3,7 @@ import json
 import datetime as dt
 import time
 import sys
+import config
 
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
@@ -14,13 +15,13 @@ MATCH_URL = "http://score.sports.media.daum.net/planus/do/v2/api/sports_games.js
 CAST_URL = "http://data.cast.sports.media.daum.net/bs/kbo/"
 
 # DB 환경설정
-DB_TYPE = "postgresql://"
-DB_USER = "postgres"
-DB_PASSWORD = "1234"
-DB_URL = "192.168.99.100"
-DB_PORT = "32771"
-DB_NAME = "baseball"
-QUERY_ECHO = False
+DB_TYPE = config.DB_TYPE
+DB_USER = config.DB_USER
+DB_PASSWORD = config.DB_PASSWORD
+DB_URL = config.DB_URL
+DB_PORT = config.DB_PORT
+DB_NAME = config.DB_NAME
+QUERY_ECHO = config.QUERY_ECHO
 
 Base = declarative_base()
 
@@ -198,6 +199,7 @@ class Batter_stats(Base):
 interval = str(sys.argv)
 MATCH_URL += date_count()[0]
 print(MATCH_URL)
+print(DB_TYPE + DB_USER + ":" + DB_PASSWORD + "@" + DB_URL + ":" + DB_PORT + "/" + DB_NAME)
 
 
 
