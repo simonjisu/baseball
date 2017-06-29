@@ -194,12 +194,11 @@ class Batter_stats(Base):
 
 #Base.metadata.create_all(engine)
 
-
-
 interval = str(sys.argv)
-MATCH_URL += date_count()[0]
+MATCH_URL += str(date_count(int(interval))[0])
 print(MATCH_URL)
 print(DB_TYPE + DB_USER + ":" + DB_PASSWORD + "@" + DB_URL + ":" + DB_PORT + "/" + DB_NAME)
+print(MATCH_URL)
 
 
 
