@@ -234,7 +234,7 @@ for i in team_key_list:
 datalist = []
 for i in range(len(team_list)):
     datalist.append(Team(tcode=team_list[i]))
-
+   
     Session.configure(bind=engine)  # once engine is available
     session = Session()
     session.add_all(datalist)  # list로 한 번에 넣기
