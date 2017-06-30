@@ -5,6 +5,7 @@ import datetime as dt
 import time
 import urllib
 import json
+
 #sqlalchemy: table만들때 쓰는 것들
 import sqlalchemy
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
@@ -181,48 +182,57 @@ Base.metadata.create_all(engine)
 #============================================
 #  Start Crawling
 #============================================
+switch = True
+
 #Inverval control
 interval = str(sys.argv)
 interval = int(interval)
 ##########################
 #functions
 ##########################
-def Date_count(interval):
+def date_count(interval=1):
     date_list = []
     for i in range(interval):
         date = dt.datetime.now() - dt.timedelta(days=(i+1))
         date_list.append(date.strftime('%Y%m%d'))
     return date_list
 
-switch = True
-def Crawling():
+
+def crawling(interval=1):
     while switch:
     ##########################
     # get cast_json
     ##########################
     #taking urls
-    urls = MATCH_URL
-    urls += date_count()[i]
+    urls_list = []
+    for i in range(interval):
+        game_date = date_count(interval)[i]
+        urls_list.append(MATCH_URL + game_date)
 
-    #highlight_json
-    raw_json = urllib.request.urlopen(urls)
-    highlight_json = json.load(raw_json)
+    #get highlight_json file
+    high_json_list = []
+    for i in urls_list:
+        high_json = urllib.request.urlopen(i)
+        time.sleep(1)
+        high_json_list.append(json.load(high_json))
 
-    #'cp_game_id' 리스트 만들어서 받기
-    castlist_id=[]
-    for i in range(len(highlight_json)):
-        castlist_id.append(highlight_json[i]['cp_game_id'])
+    #get 'cp_game_id' from highlight_json_list
+    cast_id_list=[]
+    for json in high_json_list:
+        for i in range(len(json)):
+            cast_id_list.append(json[i]['cp_game_id'])
 
-    cast_url1 = CAST_URL
-    cast_url = cast_url1 + castlist_id[0]
+    #get cast_urls_json from
+    cast_json_list =[]
+    for i in cast_id_list:
+        cast_url = CAST_URL + cast_id_list[i]
+        raw_cast_json = urllib.request.urlopen(cast_url)
+        cast_json_list.append(json.load(raw_cast_json))
 
-    raw_cast_json = urllib.request.urlopen(cast_url)
-    cast_json = json.load(raw_cast_json)
 
-
-#############################################
-#  Inputting Data
-#############################################
+    ##########################
+    #  Inputting Data
+    ##########################
 
 
 team_key_list = cast_json['registry']['team'].keys()
@@ -234,7 +244,7 @@ for i in team_key_list:
 datalist = []
 for i in range(len(team_list)):
     datalist.append(Team(tcode=team_list[i]))
-   
+
     Session.configure(bind=engine)  # once engine is available
     session = Session()
     session.add_all(datalist)  # list로 한 번에 넣기
