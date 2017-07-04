@@ -1,38 +1,43 @@
-#import packages
+# import packages
 import settings
 import sys
 import datetime as dt
 import time
-import urllib
+import urllib3
 import json
 
-#sqlalchemy: table만들때 쓰는 것들
+# sqlalchemy: table만들때 쓰는 것들
 import sqlalchemy
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
 from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
-#sqlalchemy data넣을 때 쓰는것들
+# sqlalchemy data넣을 때 쓰는것들
 from sqlalchemy.orm import sessionmaker
 Session = sessionmaker()
 
 
-#============================================
-#  Connect DB and Making Table
-#============================================
+# ============================================
+#      Connect DB and Making Table
+# ============================================
 # 환경설정
 MATCH_URL = "http://score.sports.media.daum.net/planus/do/v2/api/sports_games.json?category=kbo&date="
 CAST_URL = "http://data.cast.sports.media.daum.net/bs/kbo/"
+http = urllib3.PoolManager()
 
 # port 매번 바뀌기 때문에 도커창에서 docker ps -a 친후에, port 번호 확인하기
 engine = sqlalchemy.create_engine(settings.DB_TYPE + settings.DB_USER + ":" + settings.DB_PASSWORD + "@" + \
                                   settings.DB_URL + ":" + settings.DB_PORT + "/" + settings.DB_NAME, echo=settings.QUERY_ECHO)
 
 # Making Table
+
+
 class Livetext(Base):
+
     # table name
     __tablename__ = 'livetext'
     # table column
     id = Column(Integer, primary_key=True)
+    dates = Column(DateTime)
     inning = Column(String)
     btop = Column(String)
     batorder = Column(String)
@@ -40,12 +45,15 @@ class Livetext(Base):
     pitcher = Column(String)
     text = Column(String)
     textstyle = Column(String)
+    tcode = Column(String)
+
 
 class Team(Base):
     # table name
     __tablename__ = 'team'
     # table column
     tcode = Column(String, primary_key=True)
+
 
 class Team_Season(Base):
     # table name
@@ -80,12 +88,14 @@ class Team_Season(Base):
     wra = Column(Float)
     f_name = Column(String)
 
+
 class Player(Base):
     # table name
     __tablename__ = 'player'
     # table column
     player_id = Column(Integer, primary_key=True)
     tcode = Column(String, ForeignKey('team.tcode'))
+
 
 class Player_Profile(Base):
     # table name
@@ -101,6 +111,7 @@ class Player_Profile(Base):
     position = Column(String)
     throw = Column(String)
     weight = Column(Integer)
+
 
 class Pitcher_Stats(Base):
     # table name
@@ -130,6 +141,7 @@ class Pitcher_Stats(Base):
     t_r = Column(Float)
     t_s = Column(Float)
     t_so = Column(Float)
+
 
 class Batter_Stats(Base):
     # table name
@@ -179,17 +191,18 @@ class Batter_Stats(Base):
 # Make table command
 Base.metadata.create_all(engine)
 
-#============================================
+# ============================================
 #  Start Crawling
-#============================================
-switch = True
+# ============================================
 
-#Inverval control
+# Interval control
 interval = str(sys.argv)
 interval = int(interval)
 ##########################
-#functions
+# functions
 ##########################
+
+
 def date_count(interval=1):
     date_list = []
     for i in range(interval):
@@ -199,47 +212,53 @@ def date_count(interval=1):
 
 
 def crawling(interval=1):
+    switch = True
     while switch:
-    ##########################
-    # get cast_json
-    ##########################
-    #taking urls
-    urls_list = []
-    for i in range(interval):
-        game_date = date_count(interval)[i]
-        urls_list.append(MATCH_URL + game_date)
+        ##########################
+        # get cast_json
+        ##########################
+        # taking urls
+        urls_list = []
+        for i in range(interval):
+            game_date = date_count(interval)[i]
+            if dt.datetime.strptime(game_date, '%Y%m%d').weekday() == 0:  # SHUT DOWN CRAWLING FOR MONDAY
+                switch = False  # if there is no cast_list means there are no games(monday), shut down the crawling
+                print('Today is Monday! No Games on Monday.')
+            else:
+                urls_list.append(MATCH_URL + game_date)
 
-    #get highlight_json file
-    high_json_list = []
-    for i in urls_list:
-        high_json = urllib.request.urlopen(i)
-        time.sleep(1)
-        high_json_list.append(json.load(high_json))
+        # get highlight_json file
+        high_json_list = []
+        for i in urls_list:
+            high_json = http.request('GET', i)
+            time.sleep(0.5)
+            high_json_list.append(json.loads(high_json.data.decode('utf-8')))
 
-    #get 'cp_game_id' from highlight_json_list
-    cast_id_list=[]
-    for json in high_json_list:
-        for i in range(len(json)):
-            cast_id_list.append(json[i]['cp_game_id'])
+        # get 'cp_game_id' from highlight_json_list
+        cast_id_list = []
+        for i in high_json_list:
+            if i:  # equal to i !=[]
+                for j in range(len(i)):
+                    cast_id_list.append(i[j]['cp_game_id'])
 
-    #get cast_urls_json from
-    cast_json_list =[]
-    for i in cast_id_list:
-        cast_url = CAST_URL + cast_id_list[i]
-        raw_cast_json = urllib.request.urlopen(cast_url)
-        cast_json_list.append(json.load(raw_cast_json))
+        # get cast_urls_json from
+        cast_json_list =[]
+        for i in cast_id_list:
+            cast_url = CAST_URL + i
+            raw_cast_json = http.request('GET', cast_url)
+            time.sleep(0.5)
+            cast_json_list.append(json.loads(raw_cast_json.data.decode('utf-8')))
 
+        ##########################
+        # Inputting Data
+        ##########################
 
-    ##########################
-    #  Inputting Data
-    ##########################
-
-
-team_key_list = cast_json['registry']['team'].keys()
-team_list = []
-for i in team_key_list:
-    if 'season' in cast_json['registry']['team'][i].keys():
-        team_list.append(i)
+        for i in cast_json_list:
+            team_key_list = i['registry']['team'].keys()
+            team_list = []
+            for j in team_key_list:
+                if 'season' in i['registry']['team'][j].keys():
+                    team_list.append(i)
 
 datalist = []
 for i in range(len(team_list)):
@@ -249,3 +268,5 @@ for i in range(len(team_list)):
     session = Session()
     session.add_all(datalist)  # list로 한 번에 넣기
     session.commit()
+
+
