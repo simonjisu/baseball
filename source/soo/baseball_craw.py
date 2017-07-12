@@ -25,7 +25,7 @@ CAST_URL = "http://data.cast.sports.media.daum.net/bs/kbo/"
 http = urllib3.PoolManager()
 
 # port 매번 바뀌기 때문에 도커창에서 docker ps -a 친후에, port 번호 확인하기
-engine = sqlalchemy.create_engine(settings.DB_TYPE + settings.DB_USER + ":" + settings.DB_PASSWORD + "@" + \
+engine = sqlalchemy.create_engine(settings.DB_TYPE + settings.DB_USER + ":" + settings.DB_PASSWORD + "@" +
                                   settings.DB_URL + ":" + settings.DB_PORT + "/" + settings.DB_NAME, echo=settings.QUERY_ECHO)
 
 # Making Table
@@ -212,13 +212,20 @@ def date_count(interval=1):
 
 
 def crawling(interval=1):
+    """
+    Main Function to start crawling. Generally, there are 5 games for each interval.
+    If there is no input for interval, it will be 1. Just crawling for 
+    :param interval: how many days that you want to crawling. (default = 1)
+    :return: returns are in your Database.
+    """
     switch = True
     while switch:
         ##########################
-        # get cast_json
+        # get cast_json files
         ##########################
         # taking urls
         urls_list = []
+
         for i in range(interval):
             game_date = date_count(interval)[i]
             if dt.datetime.strptime(game_date, '%Y%m%d').weekday() == 0:  # SHUT DOWN CRAWLING FOR MONDAY
@@ -250,15 +257,15 @@ def crawling(interval=1):
             cast_json_list.append(json.loads(raw_cast_json.data.decode('utf-8')))
 
         ##########################
-        # Inputting Data
+        # Inputting Data to Database
         ##########################
 
-        for i in cast_json_list:
-            team_key_list = i['registry']['team'].keys()
+        for cast_json in cast_json_list:
+            team_key_list = cast_json['registry']['team'].keys()
             team_list = []
             for j in team_key_list:
-                if 'season' in i['registry']['team'][j].keys():
-                    team_list.append(i)
+                if 'season' in cast_json['registry']['team'][j].keys():
+                    team_list.append(j)
 
 datalist = []
 for i in range(len(team_list)):
