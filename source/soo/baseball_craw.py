@@ -277,3 +277,4 @@ for i in range(len(team_list)):
     session.commit()
 
 
+asdf
