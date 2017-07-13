@@ -214,7 +214,7 @@ def date_count(interval=1):
 def crawling(interval=1):
     """
     Main Function to start crawling. Generally, there are 5 games for each interval.
-    If there is no input for interval, it will be 1. Just crawling for 
+    If there is no input for interval, it will be 1. Just crawling for
     :param interval: how many days that you want to crawling. (default = 1)
     :return: returns are in your Database.
     """
